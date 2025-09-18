@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Processador de Planilhas de Transferências</title>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            color: #333;
+            line-height: 1.6;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background-color: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+            position: relative;
+        }
+        
+        h1 {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #2c3e50;
+            font-weight: 600;
+            font-size: 2.2rem;
+        }
+        
+        .subtitle {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #7f8c8d;
+            font-size: 1.1rem;
+        }
+        
+        .upload-area {
+            border: 2px dashed #3498db;
+            border-radius: 12px;
+            padding: 40px 30px;
+            text-align: center;
+            margin-bottom: 25px;
+            transition: all 0.3s ease;
+            background-color: #f8fafc;
+            cursor: pointer;
+        }
+        
+        .upload-area:hover {
+            background-color: #e8f4fd;
+            border-color: #2980b9;
+            transform: translateY(-2px);
+        }
+        
+        .upload-area.dragover {
+            background-color: #d6eaf8;
+            border-color: #2980b9;
+            transform: scale(1.01);
+        }
+        
+        .upload-icon {
+            font-size: 60px;
+            color: #3498db;
+            margin-bottom: 20px;
+        }
+        
+        .btn {
+            display: inline-block;
+            background-color: #3498db;
+            color: white;
+            padding: 14px 28px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            margin: 8px;
+            box-shadow: 0 4px 6px rgba(50, 50, 93, 0.11), 0 1px 3px rgba(0, 0, 0, 0.08);
+        }
+        
+        .btn:hover {
+            background-color: #2980b9;
+            transform: translateY(-2px);
+            box-shadow: 0 7px 14px rgba(50, 50, 93, 0.1), 0 3px 6px rgba(0, 0, 0, 0.08);
+        }
+        
+        .btn:active {
+            transform: translateY(1px);
+        }
+        
+        .btn:disabled {
+            background-color: #bdc3c7;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .btn-success {
+            background-color: #27ae60;
+        }
+        
+        .btn-success:hover {
+            background-color: #219653;
+        }
+        
+        .file-name {
+            margin-top: 20px;
+            font-weight: bold;
+            color: #2c3e50;
+            font-size: 1.1rem;
+        }
+        
+        .result-area {
+            margin-top: 35px;
+            display: none;
+            animation: fadeIn 0.5s ease;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        .result-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 25px;
+            font-size: 15px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        
+        .result-table th, .result-table td {
+            border: 1px solid #ddd;
+            padding: 12px 15px;
+            text-align: left;
+        }
+        
+        .result-table th {
+            background-color: #3498db;
+            color: white;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 14px;
+        }
+        
+        .result-table tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        
+        .result-table tr:hover {
+            background-color: #f1f9ff;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 30px 0;
+        }
+        
+        .spinner {
+            border: 5px solid rgba(0, 0, 0, 0.1);
+            border-radius: 50%;
+            border-top: 5px solid #3498db;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        
+        .instructions {
+            background-color: #f0f7ff;
+            border-left: 5px solid #3498db;
+            padding: 20px;
+            margin-bottom: 30px;
+            border-radius: 8px;
+        }
+        
+        .instructions h3 {
+            margin-bottom: 15px;
+            color: #2c3e50;
+            font-size: 1.3rem;
+        }
+        
+        .instructions ul {
+            margin-left: 20px;
+            margin-bottom: 15px;
+        }
+        
+        .instructions li {
+            margin-bottom: 8px;
+            line-height: 1.5;
+        }
+        
+        .error {
+            color: #e74c3c;
+            text-align: center;
+            margin: 15px 0;
+            display: none;
+            padding: 12px;
+            background-color: #fdeded;
+            border-radius: 5px;
+            font-weight: 500;
+        }
+        
+        .summary {
+            background: linear-gradient(to right, #eaf7ff, #f5fbff);
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            border: 1px solid #d1e9ff;
+        }
+        
+        .summary h3 {
+            margin-bottom: 10px;
+            color: #2c3e50;
+        }
+        
+        footer {
+            text-align: center;
+            margin-top: 40px;
+            color: #7f8c8d;
+            font-size: 14px;
+            padding: 15px;
+            border-top: 1px solid #eee;
+        }
+        
+        .signature {
+            position: absolute;
+            bottom: 15px;
+            right: 20px;
+            font-size: 12px;
+            color: #aaa;
+            font-style: italic;
+        }
+        
+        /* Responsividade */
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+            }
+            
+            h1 {
+                font-size: 1.8rem;
+            }
+            
+            .upload-area {
+                padding: 25px 15px;
+            }
+            
+            .btn {
+                padding: 12px 20px;
+                font-size: 15px;
+            }
+            
+            .result-table {
+                font-size: 14px;
+            }
+            
+            .result-table th, .result-table td {
+                padding: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Processador de Planilhas de Transferências</h1>
+        <p class="subtitle">Consolide seus dados de transferências por mês e ano</p>
+        
+        <div class="instructions">
+            <h3>Instruções:</h3>
+            <ul>
+                <li>Faça o upload de uma planilha no formato especificado (CSV com colunas: UF, Município, Transferência, Ano, Mês, 1º Decêndio, 2º Decêndio, 3º Decêndio, Total, Código IBGE, Código SIAFI)</li>
+                <li>O sistema irá consolidar os totais por mês/ano</li>
+                <li>O resultado será um arquivo Excel com duas colunas: Data (01/MM/YYYY) e Total</li>
+            </ul>
+            <p><strong>Formato esperado:</strong> CSV com separador ";" e texto entre aspas, codificação UTF-8</p>
+        </div>
+        
+        <div class="upload-area" id="dropArea">
+            <div class="upload-icon">📁</div>
+            <p>Arraste e solte o arquivo CSV aqui ou</p>
+            <input type="file" id="fileInput" accept=".csv" style="display: none;">
+            <button class="btn" id="browseBtn">Selecionar Arquivo</button>
+            <div class="file-name" id="fileName"></div>
+        </div>
+        
+        <div class="error" id="errorMessage"></div>
+        
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>Processando arquivo...</p>
+        </div>
+        
+        <div class="result-area" id="resultArea">
+            <h2>Resultado Processado</h2>
+            
+            <div class="summary" id="summary">
+                <!-- Resumo do processamento será inserido aqui -->
+            </div>
+            
+            <div style="text-align: center;">
+                <button class="btn btn-success" id="downloadBtn">Baixar Planilha Processada</button>
+            </div>
+            
+            <div style="overflow-x: auto; margin-top: 25px;">
+                <table class="result-table" id="resultTable">
+                    <thead>
+                        <tr>
+                            <th>Data (01/MM/AAAA)</th>
+                            <th>Total (R$)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Os dados processados serão inserido aqui -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <footer>
+            <p>Processador de Planilhas de Transferências © 2023</p>
+        </footer>
+        
+        <div class="signature">Criado por Fellipe Barbosa dos Santos</div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const fileInput = document.getElementById('fileInput');
+            const browseBtn = document.getElementById('browseBtn');
+            const dropArea = document.getElementById('dropArea');
+            const fileName = document.getElementById('fileName');
+            const loading = document.getElementById('loading');
+            const resultArea = document.getElementById('resultArea');
+            const resultTable = document.getElementById('resultTable');
+            const downloadBtn = document.getElementById('downloadBtn');
+            const errorMessage = document.getElementById('errorMessage');
+            const summary = document.getElementById('summary');
+            
+            let processedData = [];
+            let originalFileName = '';
+            
+            // Verificar se a biblioteca XLSX foi carregada
+            if (typeof XLSX === 'undefined') {
+                showError('Erro: Biblioteca XLSX não foi carregada corretamente. Verifique sua conexão com a internet.');
+                browseBtn.disabled = true;
+                dropArea.style.cursor = 'not-allowed';
+                dropArea.style.opacity = '0.6';
+                dropArea.onclick = null;
+                return;
+            }
+            
+            // Event listeners
+            browseBtn.addEventListener('click', () => fileInput.click());
+            fileInput.addEventListener('change', handleFileSelect);
+            downloadBtn.addEventListener('click', downloadProcessedFile);
+            
+            // Drag and drop functionality
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                dropArea.addEventListener(eventName, preventDefaults, false);
+            });
+            
+            function preventDefaults(e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+            
+            ['dragenter', 'dragover'].forEach(eventName => {
+                dropArea.addEventListener(eventName, highlight, false);
+            });
+            
+            ['dragleave', 'drop'].forEach(eventName => {
+                dropArea.addEventListener(eventName, unhighlight, false);
+            });
+            
+            function highlight() {
+                dropArea.classList.add('dragover');
+            }
+            
+            function unhighlight() {
+                dropArea.classList.remove('dragover');
+            }
+            
+            dropArea.addEventListener('drop', handleDrop, false);
+            
+            function handleDrop(e) {
+                const dt = e.dataTransfer;
+                const files = dt.files;
+                
+                if (files.length) {
+                    fileInput.files = files;
+                    handleFileSelect();
+                }
+            }
+            
+            function handleFileSelect() {
+                const file = fileInput.files[0];
+                
+                if (file) {
+                    // Verificar se é um arquivo CSV
+                    if (!file.name.toLowerCase().endsWith('.csv')) {
+                        showError('Por favor, selecione um arquivo CSV.');
+                        return;
+                    }
+                    
+                    originalFileName = file.name;
+                    fileName.textContent = file.name;
+                    errorMessage.style.display = 'none';
+                    processFile(file);
+                }
+            }
+            
+            function processFile(file) {
+                loading.style.display = 'block';
+                resultArea.style.display = 'none';
+                
+                const reader = new FileReader();
+                
+                reader.onload = function(e) {
+                    try {
+                        const data = e.target.result;
+                        processCSVData(data);
+                    } catch (error) {
+                        console.error('Erro ao processar o arquivo:', error);
+                        showError('Erro ao processar o arquivo. Verifique se o formato está correto.');
+                        loading.style.display = 'none';
+                    }
+                };
+                
+                reader.onerror = function() {
+                    showError('Erro ao ler o arquivo.');
+                    loading.style.display = 'none';
+                };
+                
+                reader.readAsText(file, 'UTF-8');
+            }
+            
+            function processCSVData(csvData) {
+                // Objeto para armazenar totais por ano e mês
+                const totalsByMonth = {};
+                let lineCount = 0;
+                
+                // Dividir o CSV em linhas
+                const lines = csvData.split(/\r\n|\n/);
+                
+                // Processar cada linha
+                for (let i = 0; i < lines.length; i++) {
+                    const line = lines[i].trim();
+                    
+                    // Pular linhas vazias
+                    if (line === '') continue;
+                    
+                    // Dividir a linha por ponto e vírgula, tratando valores entre aspas
+                    const row = parseCSVLine(line);
+                    
+                    // Pular o cabeçalho (primeira linha)
+                    if (i === 0) {
+                        // Verificar se o cabeçalho tem o formato esperado
+                        if (row.length < 9 || !row[0].includes('UF') || !row[8].includes('Total')) {
+                            showError('Formato de arquivo inválido. Verifique se o CSV segue o formato esperado.');
+                            loading.style.display = 'none';
+                            return;
+                        }
+                        continue;
+                    }
+                    
+                    lineCount++;
+                    
+                    // Verificar se a linha tem pelo menos 9 colunas (até a coluna Total)
+                    if (row.length >= 9) {
+                        const ano = row[3]; // Coluna Ano
+                        const mes = row[4]; // Coluna Mês
+                        const totalStr = row[8]; // Coluna Total
+                        
+                        // Verificar se os valores necessários estão presentes
+                        if (ano !== undefined && mes !== undefined && totalStr !== undefined) {
+                            // Converter o valor total para número
+                            const cleanTotal = totalStr.replace(/[^\d,-]/g, '').replace(',', '.');
+                            const total = parseFloat(cleanTotal);
+                            
+                            if (!isNaN(total)) {
+                                // Criar uma chave única para ano e mês
+                                const key = `${ano}-${mes}`;
+                                
+                                // Se já existe, adicionar ao total, senão criar nova entrada
+                                if (totalsByMonth[key]) {
+                                    totalsByMonth[key].total += total;
+                                } else {
+                                    totalsByMonth[key] = {
+                                        ano: ano,
+                                        mes: mes,
+                                        total: total
+                                    };
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                // Verificar se foram processados dados
+                if (Object.keys(totalsByMonth).length === 0) {
+                    showError('Nenhum dado válido foi encontrado no arquivo.');
+                    loading.style.display = 'none';
+                    return;
+                }
+                
+                // Converter o objeto em array e ordenar por ano e mês
+                processedData = Object.values(totalsByMonth).sort((a, b) => {
+                    if (a.ano !== b.ano) {
+                        return a.ano - b.ano;
+                    }
+                    return a.mes - b.mes;
+                });
+                
+                // Exibir os resultados
+                displayResults(lineCount);
+                
+                // Esconder o loading e mostrar os resultados
+                loading.style.display = 'none';
+                resultArea.style.display = 'block';
+            }
+            
+            function parseCSVLine(line) {
+                const result = [];
+                let current = '';
+                let inQuotes = false;
+                
+                for (let i = 0; i < line.length; i++) {
+                    const char = line[i];
+                    
+                    if (char === '"') {
+                        // Encontrou aspas - alternar estado
+                        inQuotes = !inQuotes;
+                    } else if (char === ';' && !inQuotes) {
+                        // Encontrou separador fora de aspas - finalizar campo
+                        result.push(current);
+                        current = '';
+                    } else {
+                        // Adicionar caractere ao campo atual
+                        current += char;
+                    }
+                }
+                
+                // Adicionar o último campo
+                result.push(current);
+                
+                return result;
+            }
+            
+            function displayResults(lineCount) {
+                // Limpar a tabela (exceto o cabeçalho)
+                const tbody = resultTable.querySelector('tbody');
+                tbody.innerHTML = '';
+                
+                let grandTotal = 0;
+                
+                // Adicionar os dados processados à tabela
+                processedData.forEach(item => {
+                    const row = document.createElement('tr');
+                    
+                    // Formatar a data como 01/MM/AAAA
+                    const dataCell = document.createElement('td');
+                    const dataFormatada = `01/${String(item.mes).padStart(2, '0')}/${item.ano}`;
+                    dataCell.textContent = dataFormatada;
+                    
+                    const totalCell = document.createElement('td');
+                    totalCell.textContent = formatCurrency(item.total);
+                    grandTotal += item.total;
+                    
+                    row.appendChild(dataCell);
+                    row.appendChild(totalCell);
+                    
+                    tbody.appendChild(row);
+                });
+                
+                // Adicionar linha de total geral
+                const totalRow = document.createElement('tr');
+                totalRow.style.fontWeight = 'bold';
+                totalRow.style.background = '#f1f9ff';
+                
+                const emptyCell = document.createElement('td');
+                const totalCell = document.createElement('td');
+                
+                emptyCell.textContent = 'TOTAL GERAL';
+                totalCell.textContent = formatCurrency(grandTotal);
+                
+                totalRow.appendChild(emptyCell);
+                totalRow.appendChild(totalCell);
+                
+                tbody.appendChild(totalRow);
+                
+                // Atualizar resumo
+                summary.innerHTML = `
+                    <h3>Processamento concluído com sucesso!</h3>
+                    <p>${lineCount} linhas processadas | ${processedData.length} meses consolidados | Total: ${formatCurrency(grandTotal)}</p>
+                `;
+            }
+            
+            function formatCurrency(value) {
+                return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+            }
+            
+            function downloadProcessedFile() {
+                // Preparar dados para a planilha
+                const wsData = [
+                    ['Data (01/MM/AAAA)', 'Total']
+                ];
+                
+                processedData.forEach(item => {
+                    // Formatar a data como 01/MM/AAAA
+                    const dataFormatada = `01/${String(item.mes).padStart(2, '0')}/${item.ano}`;
+                    wsData.push([
+                        dataFormatada,
+                        item.total
+                    ]);
+                });
+                
+                // Criar uma planilha
+                const ws = XLSX.utils.aoa_to_sheet(wsData);
+                
+                // Ajustar largura das colunas
+                const colWidths = [
+                    { wch: 15 }, // Data
+                    { wch: 20 }  // Total
+                ];
+                ws['!cols'] = colWidths;
+                
+                // Criar um workbook
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, 'Totais por Mês');
+                
+                // Gerar o arquivo Excel
+                const fileName = originalFileName ? `consolidado_${originalFileName.replace('.csv', '.xlsx')}` : 'transferencias_consolidadas.xlsx';
+                XLSX.writeFile(wb, fileName);
+            }
+            
+            function showError(message) {
+                errorMessage.textContent = message;
+                errorMessage.style.display = 'block';
+            }
+        });
+    </script>
+</body>
+</html>
